@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "yaddd"
+version = "0.1.0"
+description = "Yet another DDD for Python"
+authors = ["Andreev, Yury"]
+readme = "README.md"
+package-mode = true
+packages = [{include = "src/yaddd"}]
+
+
+[tool.poetry.dependencies]
+python = "3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
