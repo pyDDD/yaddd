@@ -10,7 +10,52 @@ packages = [{include = "src/yaddd"}]
 
 [tool.poetry.dependencies]
 python = "3.12"
+pydantic = "^2.10.6"
+sqlalchemy = "^2.0.37"
 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+mypy = "^1.14.1"
+ruff = "^0.9.4"
+isort = "^6.0.0"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+exclude = [
+  "tests/*.py",
+]
+select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "S",  # flake8-bandit
+  "C4",  # flake8-comprehensions
+  "T10",  # flake8-debugger
+  "ERA",  # flake8-eradicate
+  "G",  # flake8-logging-format
+  "PT",  # flake8-pytest-style
+  "Q",  # flake8-quotes
+]
+ignore = [
+  "D",  # docstrings
+  "FBT",  # boolean position of function arg. More: https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
+  "EM",  # Messages in exceptions
+  "TRY003",  # Messages in exceptions
+  "G004",  # flake8
+  "C408",  # flake8
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["application"]
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
 
 [build-system]
 requires = ["poetry-core"]
