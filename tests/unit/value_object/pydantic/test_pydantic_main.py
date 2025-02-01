@@ -87,7 +87,7 @@ def test_pydantic_vo_v2_serialization(test_annotation, test_value, json_schema):
         assert adapter.dump_python(test_vo) == test_vo  # warning!
         assert adapter.dump_json(test_vo) == json.dumps(test_value).encode()
 
-    assert TypeAdapter(test_vo).json_schema() == json_schema | {"title": "test_type"}
+    assert TypeAdapter(test_vo).json_schema() == json_schema | {"title": "_TestType"}
 
 
 def test_vo_for_vo():

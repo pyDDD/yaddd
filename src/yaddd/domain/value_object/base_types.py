@@ -170,7 +170,7 @@ class AnyDateValueObject(ValueObject[AnyDate], ABC):  # type: ignore[misc]
     @overload
     def __sub__(self, other: datetime.timedelta) -> Self: ...
 
-    def __sub__(self, other: datetime.timedelta | "AnyDateValueObject") -> datetime.timedelta | Self:
+    def __sub__(self, other: "datetime.timedelta | AnyDateValueObject") -> datetime.timedelta | Self:
         match other:
             case datetime.timedelta():
                 return self.__class__(self._validated_value - other)

@@ -12,8 +12,13 @@ from pydantic import (
     ValidationError,
 )
 
-from yaddd.domain.value_object import StringValueObject, IntValueObject, FloatValueObject, DateValueObject, \
-    DatetimeValueObject
+from yaddd.domain.value_object import (
+    StringValueObject,
+    IntValueObject,
+    FloatValueObject,
+    DateValueObject,
+    DatetimeValueObject,
+)
 from yaddd.domain.value_object.base import SensitiveValueAccessError, ValueObject
 from yaddd.domain.value_object.pydantic import PydanticVO
 
@@ -99,14 +104,14 @@ def test_float():
         "title": "Model",
         "type": "object",
         "properties": {
-            "a": {"title": "test_type", "type": "number", "minimum": 3},
+            "a": {"title": "_TestType", "type": "number", "minimum": 3.0},
         },
         "required": ["a"],
     }
 
 
 def test_secret_str():
-    class UserPassword(PydanticVO, StringValueObject):
+    class UserPassword(PydanticVO, ValueObject):
         pydantic_type = Annotated[SecretStr, StringConstraints(min_length=8)]
         _validated_value: SecretStr
 
@@ -240,7 +245,7 @@ def test_list():  # works same for tuples
         pydantic_type = Annotated[list[int], Len(min_length=2)]
 
     class _TestType2(PydanticVO, ValueObject):
-        pydantic_type = Annotated[list[int], Len(min_length=7)]
+        pydantic_type = Annotated[list[int], Len(max_length=7)]
 
     with pytest.raises(TypeError, match="unsupported operand type"):
         _TestType([1, 2]) + _TestType2([2, 3, 4, 5])  # Pycharm highlights operator
@@ -256,13 +261,13 @@ def test_list():  # works same for tuples
             "a": {
                 "items": {"type": "integer"},
                 "minItems": 2,
-                "title": "test_type",
+                "title": "_TestType",
                 "type": "array",
             },
             "b": {
                 "items": {"type": "integer"},
                 "maxItems": 7,
-                "title": "test_type2",
+                "title": "_TestType2",
                 "type": "array",
             },
         },

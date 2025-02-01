@@ -47,7 +47,7 @@ class PydanticVOMeta(ABCMeta):
         if isinstance(pydantic_type, UnionType):
             raise NotImplementedError(f"pydantic_type doesn't support unions: {name}")
 
-        if not isinstance(pydantic_type, type):
+        if not isinstance(get_origin(pydantic_type) or pydantic_type, type):
             raise TypeError(f"pydantic_type should be type: {name}")
 
         if not mcls._pydantic_type_matches_with_parent(bases, pydantic_type, name):

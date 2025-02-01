@@ -4,8 +4,8 @@ from typing import Annotated
 
 from annotated_types import Interval
 
-from .. import IntValueObject
-from . import PydanticVO
+from ..base_types import IntValueObject
+from .main import PydanticVO
 
 
 class PositiveInt32(PydanticVO, IntValueObject):

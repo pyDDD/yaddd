@@ -10,7 +10,8 @@ packages = [{include = "src/yaddd"}]
 
 [tool.poetry.dependencies]
 python = "3.12"
-pydantic = "^2.10.6"
+pydantic-settings = "2.7.1"
+pydantic = {extras = ["email"], version = "2.10.6"}
 sqlalchemy = "^2.0.37"
 
 
@@ -56,6 +57,23 @@ lines-after-imports = 2
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src", "examples"]
+testpaths = ["tests"]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "-s -v -p no:warnings -m 'not with_db'"
+env_override_existing_values = 1
+env_files = [".env", ".test.env"]
+log_cli = 1
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+filterwarnings = ["ignore:ssl.*is deprecated:DeprecationWarning"]
+markers = [
+    "with_db: mark a test that require database",
+]
 
 [build-system]
 requires = ["poetry-core"]
