@@ -291,9 +291,8 @@ def test_ioperations():
 
 
 def test_sensitive_vo():
-    class SensitiveVO(PydanticVO, IntValueObject):
+    class SensitiveVO(PydanticVO, IntValueObject, sensitive=True):
         pydantic_type = Annotated[int, Gt(2)]
-        sensitive = True
 
     sensitive_vo = SensitiveVO(3)
 

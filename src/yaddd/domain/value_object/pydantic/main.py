@@ -14,13 +14,13 @@ from pydantic_core.core_schema import (
 )
 from typing_extensions import Self, assert_never
 
-from ..base import ValidatedValue, ValueObject
+from ..base import ValidatedValue, ValueObject, _ValueObjectMeta
 from ..registry import VOBaseTypesRegistry
 
 _PydanticType: TypeAlias = type[ValidatedValue] | Annotated  # type: ignore[valid-type]
 
 
-class PydanticVOMeta(ABCMeta):
+class PydanticVOMeta(_ValueObjectMeta):
     def __new__(
         mcls,
         name: str,

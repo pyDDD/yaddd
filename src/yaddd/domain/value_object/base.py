@@ -1,7 +1,7 @@
 """Base value object."""
 
 import copy
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 from typing import Any, Generic, TypeVar, Final
 
 from typing_extensions import Self
@@ -19,12 +19,36 @@ class SensitiveValueAccessError(Exception):
         super().__init__(message, *args, **kwargs)
 
 
-class ValueObject(ABC, Generic[ValidatedValue]):
+class _ValueObjectMeta(ABCMeta):
+    def __new__(
+        mcls,
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, Any],
+        *,
+        sensitive: bool = False,
+        **kwargs: Any,
+    ) -> type["ValueObject"]:
+        if sensitive:
+            namespace["__repr__"] = mcls.sensitive_repr
+            namespace["__str__"] = mcls.sensitive_str
+
+        return super().__new__(mcls, name, bases, namespace, **kwargs)  # type: ignore[return-value]
+
+    def sensitive_repr(self):
+        return self.__class__.__name__ + "([MASKED])"
+
+    def sensitive_str(self):
+        # Sensitive objects can't be stored in DB through SQL Alchemy (it uses __str__). Fixme
+        raise SensitiveValueAccessError(self.__class__.__name__)
+
+
+class ValueObject(Generic[ValidatedValue], metaclass=_ValueObjectMeta):
     """Object of domain value.
 
     The core idea is to validate value on VO initialization, then trust VO data as validated.
 
-    Attributes:
+    Meta attributes:
         sensitive (bool): If True, __repr__ will return a masked value;
             it's used to mask the value in logs.
 
@@ -97,14 +121,10 @@ class ValueObject(ABC, Generic[ValidatedValue]):
     def __ior__(self, other: Any) -> Any:
         return self | other
 
-    def __repr__(self) -> str:  # ToDO mb in metaclass?
-        return self.__class__.__name__ + (f"('{self._validated_value}')" if not self.sensitive else "([MASKED])")
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + f"('{self._validated_value}')"
 
     def __str__(self) -> str:
-        # Sensitive objects can't be stored in DB through SQL Alchemy (it uses __str__).
-        if self.sensitive:  # ToDO mb in metaclass?
-            raise SensitiveValueAccessError(self.__class__.__name__)
-
         return str(self._validated_value)
 
     def __hash__(self) -> int:

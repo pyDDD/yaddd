@@ -14,9 +14,9 @@ from yaddd.domain.value_object import (
 
 
 def _unregister(cls: type, registry=VOBaseTypesRegistry):
-    del registry._cls2basic_types_map[cls]
-    for _type in registry._get_basic_types_from_generic(cls):
-        del registry.basic_type2cls_map[_type]
+    del registry._cls_to_basic_types[cls]
+    for _type in registry._extract_basic_types(cls):
+        del registry._basic_type_to_cls[_type]
 
 
 def test_vo_register():
@@ -24,12 +24,12 @@ def test_vo_register():
 
     VOBaseTypesRegistry.register(_TestBaseVO)
     assert _TestBaseVO in VOBaseTypesRegistry.registered_vo_classes
-    assert bool in VOBaseTypesRegistry.basic_type2cls_map
+    assert bool in VOBaseTypesRegistry._basic_type_to_cls
     _unregister(_TestBaseVO)
 
 
 def test_vo_register_not_vo():
-    with pytest.raises(TypeError, match="VOBaseTypesRegistry only registers ValueObject subclasses."):
+    with pytest.raises(TypeError, match="int must be a ValueObject subclass"):
         VOBaseTypesRegistry.register(int)
 
 
@@ -42,8 +42,8 @@ def test_vo_register_union():
 
     VOBaseTypesRegistry.register(_TestBaseVO)
     assert _TestBaseVO in VOBaseTypesRegistry.registered_vo_classes
-    assert SuperInt in VOBaseTypesRegistry.basic_type2cls_map
-    assert SuperStr in VOBaseTypesRegistry.basic_type2cls_map
+    assert SuperInt in VOBaseTypesRegistry._basic_type_to_cls
+    assert SuperStr in VOBaseTypesRegistry._basic_type_to_cls
     _unregister(_TestBaseVO)
 
 
@@ -84,7 +84,7 @@ def test_many_bases_vo_registration():
     for _TestBaseVO in (SimpleTestBaseVO, MixedTestBaseVO1, MixedTestBaseVO2, MixedTestBaseVO3):
         VOBaseTypesRegistry.register(_TestBaseVO)
         assert _TestBaseVO in VOBaseTypesRegistry.registered_vo_classes
-        assert complex in VOBaseTypesRegistry.basic_type2cls_map
+        assert complex in VOBaseTypesRegistry._basic_type_to_cls
         _unregister(_TestBaseVO)
 
     ChildTypeVar = TypeVar("ChildTypeVar", bound=str)
@@ -93,7 +93,7 @@ def test_many_bases_vo_registration():
 
     class SeveralGenericValueObjectsCase(NewVO, ChildVO[str], ValueObject[complex], SomeMixin, object): ...
 
-    with pytest.raises(TypeError, match="Several generic value_object bases."):
+    with pytest.raises(TypeError, match="Multiple generic bases."):
         VOBaseTypesRegistry.register(SeveralGenericValueObjectsCase)
 
 

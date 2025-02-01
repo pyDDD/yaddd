@@ -1,104 +1,93 @@
+from __future__ import annotations
 from types import UnionType
-from typing import Any, Iterable, Annotated, get_origin, cast, get_args, Final, Generic
+from typing import (
+    Any,
+    Iterable,
+    Annotated,
+    get_origin,
+    cast,
+    get_args,
+    Final,
+    Generic,
+    Type,
+)
 
 from yaddd.domain.value_object import ValueObject
 
 
 class _VOBaseTypesRegistry:
     def __init__(self) -> None:
-        self._cls2basic_types_map: dict[type[ValueObject[Any]], tuple[type, ...]] = {}
-        self.basic_type2cls_map: dict[type, type[ValueObject[Any]]] = {}
+        self._cls_to_basic_types: dict[Type[ValueObject[Any]], tuple[Type, ...]] = {}
+        self._basic_type_to_cls: dict[Type, Type[ValueObject[Any]]] = {}
 
     @property
-    def registered_vo_classes(self) -> Iterable[type[ValueObject[Any]]]:
-        return self._cls2basic_types_map.keys()
+    def registered_vo_classes(self) -> Iterable[Type[ValueObject[Any]]]:
+        return self._cls_to_basic_types.keys()
 
-    def register(self, cls: type[ValueObject[Any]]) -> type[ValueObject[Any]]:
-        if not issubclass(cls, ValueObject):
-            raise TypeError("VOBaseTypesRegistry only registers ValueObject subclasses.")
-        self._on_cls_registration(cls)
-        return cls
+    def register(self, vo_cls: Type[ValueObject[Any]]) -> Type[ValueObject[Any]]:
+        if not issubclass(vo_cls, ValueObject):
+            raise TypeError(f"{vo_cls.__name__} must be a ValueObject subclass")
 
-    def select_matching_vo_classes(
-        self,
-        type_: Annotated | type,  # type: ignore[valid-type]
-    ) -> list[type[ValueObject[Any]]]:
-        """Select all VO classes matching for inheritance to use with provided type."""
-        type_ = self._prepare_type(type_)
+        self._process_class_registration(vo_cls)
+        return vo_cls
 
-        result: list[type[ValueObject[Any]]] = [ValueObject]  # type: ignore[type-abstract]
-        for vo_cls, basic_types in self._cls2basic_types_map.items():
-            if issubclass(type_, basic_types):
-                result.append(vo_cls)
-        return result
+    def select_matching_vo_classes(self, target_type: Annotated | Type) -> list[Type[ValueObject[Any]]]:
+        processed_type = self._normalize_type(target_type)
+        matches = [ValueObject]  # Default base class
 
-    def select_most_matching_vo_class(
-        self,
-        type_: Annotated | type,  # type: ignore[valid-type]
-    ) -> type[ValueObject[Any]]:
-        """Select the most matching for inheritance VO class for provided type."""
-        type_ = self._prepare_type(type_)
-        matching_vo_classes: list[type[ValueObject[Any]]] = self.select_matching_vo_classes(type_)
-        if len(matching_vo_classes) == 1:
-            return matching_vo_classes[0]
+        for vo_cls, basic_types in self._cls_to_basic_types.items():
+            if issubclass(processed_type, basic_types):
+                matches.append(vo_cls)
 
-        def _key_most_matching_vo_class(
-            matching_vo_class: type[ValueObject[Any]],
-        ) -> int:
-            """For each matching_vo_class:
+        return matches
 
-            1) Find basic types (or default)
-            2) Collect MROs of each basic type, relative to <type_>
-            3) Return length of the richest (MRO-wise) basic type's MRO
-            """
-            default = (object,)
-            matching_vo_class_basic_types: tuple[type, ...] = self._cls2basic_types_map.get(matching_vo_class, default)
-            mros = [basic_type.__mro__ for basic_type in matching_vo_class_basic_types if issubclass(type_, basic_type)]
-            return len(max(mros))
+    def select_most_matching_vo_class(self, target_type: Annotated | Type) -> Type[ValueObject[Any]]:
+        candidates = self.select_matching_vo_classes(target_type)
+        if len(candidates) == 1:
+            return candidates[0]
 
-        # Among each matching VO class find the most matching by key
-        return max(matching_vo_classes, key=_key_most_matching_vo_class)
+        def mro_complexity(cls: Type[ValueObject[Any]]) -> int:
+            basic_types = self._cls_to_basic_types.get(cls, (object,))
+            relevant_mros = [bt.__mro__ for bt in basic_types if issubclass(processed_type, bt)]
+            return max(len(mro) for mro in relevant_mros) if relevant_mros else 0
 
-    def _on_cls_registration(self, cls: type[ValueObject[Any]]) -> None:
-        basic_types_from_generic = self._get_basic_types_from_generic(cls)
+        processed_type = self._normalize_type(target_type)
+        return max(candidates, key=mro_complexity)
 
-        self._cls2basic_types_map[cls] = basic_types_from_generic
-        for basic_type in basic_types_from_generic:
-            if registered_by_cls := self.basic_type2cls_map.get(basic_type):
-                raise ValueError(
-                    f"Basic type {basic_type} is already registered by cls {registered_by_cls}. Triggered by: {cls}"
-                )
-            self.basic_type2cls_map[basic_type] = cls
+    def _process_class_registration(self, vo_cls: Type[ValueObject[Any]]) -> None:
+        basic_types = self._extract_basic_types(vo_cls)
+
+        self._cls_to_basic_types[vo_cls] = basic_types
+
+        for bt in basic_types:
+            if existing := self._basic_type_to_cls.get(bt):
+                raise ValueError(f"Type conflict: {bt} already registered by {existing.__name__}")
+            self._basic_type_to_cls[bt] = vo_cls
 
     @staticmethod
-    def _prepare_type(type_: type) -> type:
-        if get_origin(type_) is Annotated:  # Annotated support
-            return cast(type, get_args(type_)[0])
-        return get_origin(type_) or type_  # Generic types support (ex. dict[k, v])
+    def _normalize_type(t: Type | Annotated) -> Type:
+        if get_origin(t) is Annotated:
+            return cast(Type, get_args(t)[0])
+        return get_origin(t) or t
 
     @staticmethod
-    def _get_basic_types_from_generic(cls: type[ValueObject[Any]]) -> tuple[type, ...]:
-        """Get typevar from generic."""
-        # Select ValueObject classes, parametrized with typevar
-        value_object_classes_with_type_var = [
-            base_cls
-            for base_cls in cls.__orig_bases__  # type: ignore[attr-defined]
-            if issubclass(get_origin(base_cls) or base_cls, ValueObject)
-            and len(get_args(base_cls)) == _VO_TYPEVARS_COUNT
+    def _extract_basic_types(vo_cls: Type[ValueObject[Any]]) -> tuple[Type, ...]:
+        generic_bases = [
+            base
+            for base in getattr(vo_cls, "__orig_bases__", [])
+            if issubclass(get_origin(base) or base, ValueObject) and len(get_args(base)) == _VO_TYPEVARS_COUNT
         ]
-        if not value_object_classes_with_type_var:
-            raise TypeError(f"TypeVar is not defined in registered class: {cls}.")
 
-        if len(value_object_classes_with_type_var) > 1:
-            raise TypeError(f"Several generic value_object bases: {cls}.")
+        if not generic_bases:
+            raise TypeError(f"Missing type parameters in {vo_cls.__name__}")
+        if len(generic_bases) > 1:
+            raise TypeError(f"Multiple generic bases in {vo_cls.__name__}")
 
-        # Get the first typevar, as it should represent type of value, stored after validation
-        type_var_type = get_args(value_object_classes_with_type_var[0])[0]
+        type_var = get_args(generic_bases[0])[0]
 
-        # Return tuple of types to map with cls in registry
-        if isinstance(type_var_type, UnionType):
-            return get_args(type_var_type)
-        return (get_origin(type_var_type) or type_var_type,)  # for generic typevars (ex: dict[k, v])
+        if isinstance(type_var, UnionType):
+            return get_args(type_var)
+        return (get_origin(type_var) or type_var,)
 
 
 VOBaseTypesRegistry = _VOBaseTypesRegistry()
@@ -107,9 +96,9 @@ del _VOBaseTypesRegistry
 _VO_TYPEVARS_COUNT: Final[int] = len(
     get_args(
         next(
-            _base
-            for _base in ValueObject.__orig_bases__  # type: ignore[attr-defined]
-            if (get_origin(_base) or _base) == Generic
+            base
+            for base in ValueObject.__orig_bases__  # type: ignore[attr-defined]
+            if (get_origin(base) or base) == Generic
         )
     )
 )
