@@ -91,12 +91,13 @@ class PydanticVO:
     _validated_value: ValidatedValue
 
     def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        if not (pydantic_type := getattr(cls, "pydantic_type", None)):
-            raise TypeError(f"pydantic_type must be set for {cls.__name__}")
-        if not kwargs.get("skip_pydantic_validation", False):
+        if not kwargs.pop("skip_pydantic_validation", False):
+            if not (pydantic_type := getattr(cls, "pydantic_type", None)):
+                raise TypeError(f"pydantic_type must be set for {cls.__name__}")
             _validate_pydantic_type(cls, pydantic_type)
-        cls._pydantic_adapter = TypeAdapter(pydantic_type)
+            cls._pydantic_adapter = TypeAdapter(pydantic_type)
+
+        super().__init_subclass__(**kwargs)
 
     @classmethod
     @final

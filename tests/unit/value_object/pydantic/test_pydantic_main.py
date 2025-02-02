@@ -120,3 +120,16 @@ def test_vo_with_python_serializer():
 
     adapter = TypeAdapter(_TestTypeWithSerialization)
     assert adapter.dump_python(adapter._type(3)) == _TestTypeWithSerialization(3)
+
+
+def test_skip_pydantic_validation():
+    with pytest.raises(TypeError, match="pydantic_type"):
+
+        class _InvalidMediumVO(PydanticVO, ValueObject):
+            pass
+
+    class _MediumVO(PydanticVO, ValueObject, skip_pydantic_validation=True):
+        pass
+
+    class _FinalVO(_MediumVO):
+        pydantic_type = int
