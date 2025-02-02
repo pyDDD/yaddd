@@ -35,13 +35,11 @@ def _pydantic_type_matches_with_parent(_cls: Type, pydantic_type: _PydanticType)
     """Ensure ValueObject type and pydantic_type match.
 
     Positive:
-    @pydantify
-    class PositiveCaseVO(IntValueObject):
+    class PositiveCaseVO(PydanticVO, IntValueObject):
         pydantic_type = int
 
     Negative:
-    @pydantify
-    class NegativeCaseVO(StringValueObject):
+    class NegativeCaseVO(PydanticVO, StringValueObject):
         pydantic_type = int
     """
     # Looking for latest ValueObject subclass in bases
