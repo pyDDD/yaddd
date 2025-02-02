@@ -61,7 +61,7 @@ class ValueObject(Generic[ValidatedValue], metaclass=_ValueObjectMeta):
     """
 
     sensitive: bool = False
-    _validated_value: Final[ValidatedValue]
+    _validated_value: ValidatedValue
 
     __slots__ = ("_validated_value",)
 

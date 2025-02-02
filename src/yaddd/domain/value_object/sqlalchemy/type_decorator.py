@@ -1,7 +1,6 @@
-"""SQLAlchemy integration."""
+"""SQLAlchemy integration with ValueObject."""
 
-from typing import Protocol, overload, TypeVar, Any
-
+from typing import Protocol, overload, TypeVar, Any, Type
 from sqlalchemy import String, TypeDecorator, Dialect
 from sqlalchemy.sql.type_api import TypeEngine
 
@@ -9,53 +8,71 @@ from ..base import ValueObject
 
 
 _PythonValueT = TypeVar("_PythonValueT")
-_DatabaseStorableValueT = TypeVar("_DatabaseStorableValueT")
+_StorableValueT = TypeVar("_StorableValueT")
 
 
-class _TypeDecoratorFunctionProtocol(Protocol):
-    @overload
-    def __call__(self, value: _PythonValueT, dialect: Dialect) -> _DatabaseStorableValueT:
-        """Serialize value before storage in database."""
+class _ConverterProtocol(Protocol):
+    """Protocol for converting values between Python and database storage."""
 
     @overload
-    def __call__(self, value: _DatabaseStorableValueT, dialect: Dialect) -> _PythonValueT:
-        """Deserialize value after fetching from database."""
+    def __call__(self, value: _PythonValueT, dialect: Dialect) -> _StorableValueT | None: ...
 
-    def __call__(self, value: Any, dialect: Dialect) -> Any:
-        """Instruction to convert values on database communication."""
+    @overload
+    def __call__(self, value: _StorableValueT, dialect: Dialect) -> _PythonValueT | None: ...
+
+    def __call__(self, value: Any, dialect: Dialect) -> Any: ...
 
 
 def create_type_decorator(
-    python_type: ValueObject | type | None,
-    sqla_impl: TypeEngine = String,
-    serialize_func: _TypeDecoratorFunctionProtocol | None = None,
-    deserialize_func: _TypeDecoratorFunctionProtocol | None = None,
-    to_cache=True,
-    name: str | None = None,
-) -> type[TypeDecorator]:
-    """Fabric to create type decorator to provide power of VO into SQLAlchemy."""
-    if python_type is None and (deserialize_func is None or name is None):
-        raise ValueError("You should provide `python_type` or both `name` and `deserialize_func`")
+    value_type: Type[ValueObject] | Type | None = None,
+    sql_type: TypeEngine = String,
+    serialize: _ConverterProtocol | None = None,
+    deserialize: _ConverterProtocol | None = None,
+    *,
+    cacheable: bool = True,
+    type_name: str | None = None,
+) -> Type[TypeDecorator]:
+    """
+    Factory for creating custom SQLAlchemy TypeDecorator for ValueObject.
 
-    class _TypeDecorator(TypeDecorator):
-        impl = sqla_impl
-        cache_ok = to_cache
+    Args:
+        value_type: ValueObject type for automatic conversion
+        sql_type: Base SQLAlchemy storage type (default: String)
+        serialize: Custom serialization function to database format
+        deserialize: Custom deserialization function from database format
+        cacheable: Indicates if this TypeDecorator is safe to be used as part of a cache key (default: True)
+        type_name: Custom type name for debugging purposes
 
-        if serialize_func:
-            process_bind_param = serialize_func
+    Returns:
+        Custom TypeDecorator class
+
+    Raises:
+        ValueError: If neither value_type nor deserialize+type_name are provided
+    """
+    if not value_type and not (deserialize and type_name):
+        raise ValueError("Must specify either value_type or both deserialize and type_name")
+
+    class CustomTypeDecorator(TypeDecorator):
+        impl = sql_type
+        cache_ok = cacheable
+
+        if serialize:
+            process_bind_param = serialize
         else:
 
-            def process_bind_param(self, value, dialect):
-                return None if value is None else str(value)
+            def process_bind_param(self, value: _PythonValueT, dialect: Dialect) -> _StorableValueT | None:
+                return str(value) if value is not None else None
 
-        if deserialize_func:
-            process_result_value = deserialize_func
+        if deserialize:
+            process_result_value = deserialize
         else:
 
-            def process_result_value(self, value, dialect):
-                return None if value is None else python_type(value)
+            def process_result_value(self, value: _StorableValueT, dialect: Dialect) -> _PythonValueT | None:
+                return value_type(value) if value is not None else None  # type: ignore
 
-    type_decorator_cls = _TypeDecorator
-    class_name = name or python_type.__name__
-    _TypeDecorator.__name__ = _TypeDecorator.__qualname__ = f"{class_name}TypeDecorator"
-    return type_decorator_cls
+    # Format type name for better debugging
+    name = type_name or getattr(value_type, "__name__", "CustomType")
+    CustomTypeDecorator.__name__ = f"{name}TypeDecorator"
+    CustomTypeDecorator.__qualname__ = f"{name}TypeDecorator"
+
+    return CustomTypeDecorator

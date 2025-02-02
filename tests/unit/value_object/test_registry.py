@@ -13,100 +13,106 @@ from yaddd.domain.value_object import (
 )
 
 
-def _unregister(cls: type, registry=VOBaseTypesRegistry):
+def _unregister_class(cls: type, registry: VOBaseTypesRegistry = VOBaseTypesRegistry) -> None:
+    """Helper to clean up registry after test."""
     del registry._cls_to_basic_types[cls]
-    for _type in registry._extract_basic_types(cls):
-        del registry._basic_type_to_cls[_type]
+    for basic_type in registry._extract_basic_types(cls):
+        del registry._basic_type_to_cls[basic_type]
 
 
-def test_vo_register():
-    class _TestBaseVO(ValueObject[bool]): ...
+def test_registration_of_value_object_subclass():
+    class TestVO(ValueObject[bool]):
+        pass
 
-    VOBaseTypesRegistry.register(_TestBaseVO)
-    assert _TestBaseVO in VOBaseTypesRegistry.registered_vo_classes
+    VOBaseTypesRegistry.register(TestVO)
+
+    assert TestVO in VOBaseTypesRegistry.registered_vo_classes
     assert bool in VOBaseTypesRegistry._basic_type_to_cls
-    _unregister(_TestBaseVO)
+
+    _unregister_class(TestVO)
 
 
-def test_vo_register_not_vo():
-    with pytest.raises(TypeError, match="int must be a ValueObject subclass"):
+def test_registration_of_non_value_object_fails():
+    with pytest.raises(TypeError, match="must be a ValueObject subclass"):
         VOBaseTypesRegistry.register(int)
 
 
-def test_vo_register_union():
-    class SuperInt(int): ...
+def test_registration_with_union_type_parameter():
+    class SuperInt(int):
+        pass
 
-    class SuperStr(str): ...
+    class SuperStr(str):
+        pass
 
-    class _TestBaseVO(ValueObject[SuperStr | SuperInt]): ...
+    class UnionVO(ValueObject[SuperStr | SuperInt]):
+        pass
 
-    VOBaseTypesRegistry.register(_TestBaseVO)
-    assert _TestBaseVO in VOBaseTypesRegistry.registered_vo_classes
+    VOBaseTypesRegistry.register(UnionVO)
+
+    assert UnionVO in VOBaseTypesRegistry.registered_vo_classes
     assert SuperInt in VOBaseTypesRegistry._basic_type_to_cls
     assert SuperStr in VOBaseTypesRegistry._basic_type_to_cls
-    _unregister(_TestBaseVO)
+
+    _unregister_class(UnionVO)
 
 
-def test_most_matching_vo_for_date():
-    matching_vo_classes = VOBaseTypesRegistry.select_matching_vo_classes(datetime.date)
-    # [ValueObject, DateValueObject]
-    assert DateValueObject in matching_vo_classes
-
-    assert VOBaseTypesRegistry.select_most_matching_vo_class(datetime.date) == DateValueObject
+def test_date_type_matching():
+    result = VOBaseTypesRegistry.select_most_matching_vo_class(datetime.date)
+    assert result == DateValueObject
 
 
-def test_most_matching_vo_for_datetime():
-    matching_vo_classes = VOBaseTypesRegistry.select_matching_vo_classes(datetime.datetime)
-    # [ValueObject, DateValueObject, DatetimeValueObject]
-    assert DatetimeValueObject in matching_vo_classes
-
-    assert VOBaseTypesRegistry.select_most_matching_vo_class(datetime.datetime) == DatetimeValueObject
+def test_datetime_type_matching():
+    result = VOBaseTypesRegistry.select_most_matching_vo_class(datetime.datetime)
+    assert result == DatetimeValueObject
 
 
-def test_many_bases_vo_registration():
-    class SimpleTestBaseVO(ValueObject[complex], ABC): ...
+def test_complex_inheritance_cases():
+    class BaseVO(ValueObject[complex], ABC):
+        pass
 
-    class SomeMixin: ...
+    class Mixin:
+        pass
 
-    class MixedTestBaseVO1(SomeMixin, ValueObject[complex], ABC): ...
+    class VOWithMixin(Mixin, ValueObject[complex], ABC):
+        pass
 
-    class NewVO(ValueObject):
-        def fancy_method(self): ...
+    class ExtendedVO(ValueObject[complex]):
+        def extra_method(self):
+            pass
 
-    class MixedTestBaseVO2(NewVO, ValueObject[complex], SomeMixin, object): ...
+    class GenericMixin(Generic[TypeVar("T")]):
+        pass
 
-    _T = TypeVar("_T")
+    class VOWithGenericMixin(ExtendedVO, GenericMixin[str], ValueObject[complex], Mixin):
+        pass
 
-    class GenericMixin(Generic[_T]): ...
+    test_cases = [BaseVO, VOWithMixin, ExtendedVO, VOWithGenericMixin]
 
-    class MixedTestBaseVO3(NewVO, GenericMixin[str], ValueObject[complex], SomeMixin, object): ...
-
-    for _TestBaseVO in (SimpleTestBaseVO, MixedTestBaseVO1, MixedTestBaseVO2, MixedTestBaseVO3):
-        VOBaseTypesRegistry.register(_TestBaseVO)
-        assert _TestBaseVO in VOBaseTypesRegistry.registered_vo_classes
+    for vo_class in test_cases:
+        VOBaseTypesRegistry.register(vo_class)
+        assert vo_class in VOBaseTypesRegistry.registered_vo_classes
         assert complex in VOBaseTypesRegistry._basic_type_to_cls
-        _unregister(_TestBaseVO)
+        _unregister_class(vo_class)
 
-    ChildTypeVar = TypeVar("ChildTypeVar", bound=str)
 
-    class ChildVO(ValueObject[ChildTypeVar]): ...
+def test_multiple_generic_bases_error():
+    class ChildVO(ValueObject[TypeVar("T")]):
+        pass
 
-    class SeveralGenericValueObjectsCase(NewVO, ChildVO[str], ValueObject[complex], SomeMixin, object): ...
+    class InvalidVO(ChildVO[str], ValueObject[complex]):
+        pass
 
-    with pytest.raises(TypeError, match="Multiple generic bases."):
-        VOBaseTypesRegistry.register(SeveralGenericValueObjectsCase)
+    with pytest.raises(TypeError, match="Multiple generic bases"):
+        VOBaseTypesRegistry.register(InvalidVO)
 
 
 @pytest.mark.parametrize(
-    "type_",
-    (
+    "dict_type",
+    [
         dict,
         dict[str, str],
-    ),
+    ],
 )
-def test_dict_vo_matching(type_):
-    matching_vo_classes = VOBaseTypesRegistry.select_matching_vo_classes(type_)
-    # [ValueObject, DictValueObject]
-    assert DictValueObject in matching_vo_classes
-
-    assert VOBaseTypesRegistry.select_most_matching_vo_class(type_) == DictValueObject
+def test_dict_type_matching(dict_type):
+    result = VOBaseTypesRegistry.select_most_matching_vo_class(dict_type)
+    assert result == DictValueObject
