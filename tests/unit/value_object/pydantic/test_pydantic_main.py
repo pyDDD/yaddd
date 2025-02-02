@@ -3,13 +3,7 @@ from typing import Annotated
 
 import pytest
 from annotated_types import Interval
-from pydantic import (
-    BaseModel,
-    PlainSerializer,
-    StringConstraints,
-    TypeAdapter,
-    ValidationError,
-)
+from pydantic import BaseModel, PlainSerializer, StringConstraints, TypeAdapter, ValidationError
 
 from yaddd.domain.value_object import StringValueObject, ValueObject
 from yaddd.domain.value_object.pydantic import PydanticVO

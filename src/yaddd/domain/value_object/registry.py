@@ -1,16 +1,7 @@
 from __future__ import annotations
+
 from types import UnionType
-from typing import (
-    Any,
-    Iterable,
-    Annotated,
-    get_origin,
-    cast,
-    get_args,
-    Final,
-    Generic,
-    Type,
-)
+from typing import Annotated, Any, Final, Generic, Iterable, Type, cast, get_args, get_origin
 
 from yaddd.domain.value_object import ValueObject
 

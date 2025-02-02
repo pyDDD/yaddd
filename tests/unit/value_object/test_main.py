@@ -15,11 +15,7 @@ from yaddd.domain.value_object import (
     StringValueObject,
     ValueObject,
 )
-from yaddd.domain.value_object.base_types import (
-    AnyDateValueObject,
-    DatetimeValueObject,
-    DictValueObject,
-)
+from yaddd.domain.value_object.base_types import AnyDateValueObject, DatetimeValueObject, DictValueObject
 
 
 class _TestTypeMixin:

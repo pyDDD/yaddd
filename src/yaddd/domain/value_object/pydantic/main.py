@@ -1,91 +1,68 @@
 """Value objects, powered with pydantic v2."""
 
-from abc import ABCMeta
 from types import UnionType
-from typing import Annotated, Any, TypeAlias, final, get_args, get_origin
+from typing import Annotated, Any, Type, TypeAlias, final, get_args, get_origin
 
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, SchemaSerializer, core_schema
-from pydantic_core.core_schema import (
-    JsonSchema,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
-)
+from pydantic_core.core_schema import JsonSchema, SerializationInfo, SerializerFunctionWrapHandler
 from typing_extensions import Self, assert_never
 
-from ..base import ValidatedValue, ValueObject, _ValueObjectMeta
+from ..base import ValidatedValue, ValueObject
 from ..registry import VOBaseTypesRegistry
 
 _PydanticType: TypeAlias = type[ValidatedValue] | Annotated  # type: ignore[valid-type]
 
 
-class PydanticVOMeta(_ValueObjectMeta):
-    def __new__(
-        mcls,
-        name: str,
-        bases: tuple[type, ...],
-        namespace: dict[str, Any],
-        *,
-        skip_meta_validation: bool = False,
-        **kwargs: Any,
-    ) -> type["PydanticVO"]:
-        pydantic_type: _PydanticType | None = namespace.get("pydantic_type")
-        if not skip_meta_validation:
-            mcls._validate_pydantic_type(pydantic_type, bases, name)
-        namespace["_pydantic_adapter"] = TypeAdapter(pydantic_type)
-        return super().__new__(mcls, name, bases, namespace, **kwargs)  # type: ignore[return-value]
+def _validate_pydantic_type(
+    _cls: Type, pydantic_type: _PydanticType
+) -> None:  # ToDo good place to use specifications pattern
+    if get_origin(pydantic_type) is Annotated:  # Annotated support
+        return _validate_pydantic_type(_cls, get_args(pydantic_type)[0])
 
-    @classmethod
-    def _validate_pydantic_type(mcls, pydantic_type: _PydanticType | None, bases: tuple[type, ...], name: str) -> None:
-        if not pydantic_type:
-            raise TypeError(f"pydantic_type must be set for {name}")
+    if isinstance(pydantic_type, UnionType):
+        raise NotImplementedError(f"pydantic_type doesn't support unions: {_cls.__name__}")
 
-        if get_origin(pydantic_type) is Annotated:  # Annotated support
-            return mcls._validate_pydantic_type(get_args(pydantic_type)[0], bases, name)
+    if not isinstance(get_origin(pydantic_type) or pydantic_type, type):
+        raise TypeError(f"pydantic_type should be type: {_cls.__name__}")
 
-        if isinstance(pydantic_type, UnionType):
-            raise NotImplementedError(f"pydantic_type doesn't support unions: {name}")
-
-        if not isinstance(get_origin(pydantic_type) or pydantic_type, type):
-            raise TypeError(f"pydantic_type should be type: {name}")
-
-        if not mcls._pydantic_type_matches_with_parent(bases, pydantic_type, name):
-            raise TypeError(f"Types mismatch for {name}")
-
-    @classmethod
-    def _pydantic_type_matches_with_parent(
-        cls, bases: tuple[type, ...], pydantic_type: _PydanticType, name: str
-    ) -> bool:
-        """Check to avoid pydantic_type + ValueObject cls mismatch.
-
-        Positive:
-        class PositiveCaseVO(PydanticVO, IntValueObject):
-            pydantic_type = int
-
-        Negative:
-        class NegativeCaseVO(PydanticVO, StringValueObject):
-            pydantic_type = int
-        """
-        # Looking for latest ValueObject subclass in bases
-        cls_based_on_value_object = next((base_cls for base_cls in bases if issubclass(base_cls, ValueObject)), None)
-        if cls_based_on_value_object is None:
-            raise TypeError(f"PydanticVO's children should be based on ValueObject: {name}")
-
-        # Looking for the latest registered in VOBaseTypesRegistry class
-        ddd_vo_cls = next(
-            (
-                ddd_cls
-                for ddd_cls in cls_based_on_value_object.__mro__
-                if ddd_cls in VOBaseTypesRegistry.registered_vo_classes
-            ),
-            None,
-        )
-
-        return ddd_vo_cls is None or ddd_vo_cls in VOBaseTypesRegistry.select_matching_vo_classes(pydantic_type)
+    if not _pydantic_type_matches_with_parent(_cls, pydantic_type):
+        raise TypeError(f"Types mismatch for {_cls.__name__}")
 
 
-class PydanticVO(metaclass=PydanticVOMeta, skip_meta_validation=True):
+def _pydantic_type_matches_with_parent(_cls: Type, pydantic_type: _PydanticType) -> bool:
+    """Ensure ValueObject type and pydantic_type match.
+
+    Positive:
+    @pydantify
+    class PositiveCaseVO(IntValueObject):
+        pydantic_type = int
+
+    Negative:
+    @pydantify
+    class NegativeCaseVO(StringValueObject):
+        pydantic_type = int
+    """
+    # Looking for latest ValueObject subclass in bases
+    cls_based_on_value_object = next((base_cls for base_cls in _cls.__mro__ if issubclass(base_cls, ValueObject)), None)
+    if cls_based_on_value_object is None:
+        raise TypeError(f"PydanticVO's children should be based on ValueObject: {_cls.__name__}")
+
+    # Looking for the latest registered in VOBaseTypesRegistry class
+    ddd_vo_cls = next(
+        (
+            ddd_cls
+            for ddd_cls in cls_based_on_value_object.__mro__
+            if ddd_cls in VOBaseTypesRegistry.registered_vo_classes
+        ),
+        None,
+    )
+
+    return ddd_vo_cls is None or ddd_vo_cls in VOBaseTypesRegistry.select_matching_vo_classes(pydantic_type)
+
+
+class PydanticVO:
     """Value Object with power of pydantic.
 
     The core idea is still the same as for ValueObject.
@@ -109,19 +86,19 @@ class PydanticVO(metaclass=PydanticVOMeta, skip_meta_validation=True):
             (because of validation during initialization)
     """
 
-    _pydantic_adapter: TypeAdapter[_PydanticType]
+    __pydantic_serializer__: SchemaSerializer
     pydantic_type: _PydanticType
 
-    __pydantic_serializer__: SchemaSerializer
-
-    # ValueObject interface
+    _pydantic_adapter: TypeAdapter[_PydanticType]
     _validated_value: ValidatedValue
 
-    @classmethod
-    @final
-    def validate(cls, value: ValidatedValue | Any) -> ValidatedValue:
-        """Validate value, using pydantic validators."""
-        return cls._pydantic_adapter.validate_python(value)
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if not (pydantic_type := getattr(cls, "pydantic_type", None)):
+            raise TypeError(f"pydantic_type must be set for {cls.__name__}")
+        if not kwargs.get("skip_pydantic_validation", False):
+            _validate_pydantic_type(cls, pydantic_type)
+        cls._pydantic_adapter = TypeAdapter(pydantic_type)
 
     @classmethod
     @final
@@ -144,6 +121,12 @@ class PydanticVO(metaclass=PydanticVOMeta, skip_meta_validation=True):
         json_schema: dict[str, Any] = cls._pydantic_adapter.json_schema()
         json_schema["title"] = cls.__name__
         return json_schema
+
+    @classmethod
+    @final
+    def validate(cls, value: ValidatedValue | Any) -> ValidatedValue:
+        """Validate value, using pydantic validators."""
+        return cls._pydantic_adapter.validate_python(value)
 
     @classmethod
     @final

@@ -1,6 +1,6 @@
 import operator
-from typing import Callable, Any
 from json import JSONEncoder
+from typing import Any, Callable
 
 from yaddd.domain.value_object import ValueObject
 

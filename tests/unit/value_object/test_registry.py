@@ -5,11 +5,11 @@ from typing import Generic, TypeVar
 import pytest
 
 from yaddd.domain.value_object import (
-    ValueObject,
-    VOBaseTypesRegistry,
     DatetimeValueObject,
     DateValueObject,
     DictValueObject,
+    ValueObject,
+    VOBaseTypesRegistry,
 )
 
 
