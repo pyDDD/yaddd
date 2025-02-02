@@ -17,7 +17,7 @@ _PydanticType: TypeAlias = type[ValidatedValue] | Annotated  # type: ignore[vali
 
 def _validate_pydantic_type(
     _cls: Type, pydantic_type: _PydanticType
-) -> None:  # ToDo good place to use specifications pattern
+) -> None:  # ToDo good place to use specifications pattern https://github.com/pyDDD/yaddd/issues/3
     if get_origin(pydantic_type) is Annotated:  # Annotated support
         return _validate_pydantic_type(_cls, get_args(pydantic_type)[0])
 
