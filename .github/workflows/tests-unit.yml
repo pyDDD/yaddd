@@ -1,6 +1,6 @@
 # This workflow runs unit-tests.
 
-name: Python package
+name: Unit tests
 
 on: [push]
 
