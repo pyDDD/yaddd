@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.yaddd.specification import Specification
+from src.yaddd.shared.specification import Specification
 
 
 class IsEven(Specification[int]):
