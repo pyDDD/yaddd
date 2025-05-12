@@ -2,9 +2,7 @@
 
 import copy
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Any, Final, Generic, TypeVar
-
-from typing_extensions import Self
+from typing import Any, Final, Generic, Self, TypeVar
 
 ValidatedValue = TypeVar("ValidatedValue")
 
