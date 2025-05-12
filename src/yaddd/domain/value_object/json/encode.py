@@ -2,7 +2,7 @@ import operator
 from json import JSONEncoder
 from typing import Any, Callable
 
-from yaddd.domain.value_object import ValueObject
+from ..base import ValueObject
 
 vo_compatible_encoder: Callable[[ValueObject[Any]], Any] = operator.attrgetter("_validated_value")
 
