@@ -34,6 +34,7 @@ class _ValueObjectMeta(ABCMeta):
         return super().__new__(mcls, name, bases, namespace, **kwargs)  # type: ignore[return-value]
 
     def sensitive_repr(self):
+        """Mask sensitive data."""
         return self.__class__.__name__ + "([MASKED])"
 
     def sensitive_str(self):
