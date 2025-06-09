@@ -2,7 +2,7 @@
 name = "yaddd"
 description = "Yet Another DDD for Python"
 authors = [
-    {name = "German Goltsov", email = "german@example.com"},
+    {name = "German Goltsov", email = "gerleffx2@gmail.com"},
     {name = "Maxim Mukhametov", email = "maxim@example.com"},
     {name = "Roman Dobrov", email = "roman@example.com"},
     {name = "Yuri Andreev", email = "andreev.jr@gmail.com"},
@@ -40,6 +40,8 @@ pydantic = [
 [dependency-groups]
 dev = [
     "pytest",
+    "pydantic[email]>=2.10.6",
+    "pydantic-settings>=2.7.1",
 ]
 docs = []
 linting = [
