@@ -23,14 +23,6 @@ class NumericValueObject(ValueObject[AnyNumeric]):  # type: ignore[misc]
         self._ensure_same_class(other)
         return self.__class__(self._validated_value - other._validated_value)
 
-    def __radd__(self, other: Self) -> Self:
-        self._ensure_same_class(other)
-        return self.__class__(self._validated_value + other._validated_value)
-
-    def __rsub__(self, other: Self) -> Self:
-        self._ensure_same_class(other)
-        return self.__class__(self._validated_value - other._validated_value)
-
     def __neg__(self) -> Self:
         return self.__class__(-self._validated_value)
 
@@ -98,10 +90,6 @@ class AnyStrValueObject(ValueObject[typing.AnyStr]):  # type: ignore[misc]
     def __add__(self, other: Self) -> Self:
         self._ensure_same_class(other)
         return self.__class__(self._validated_value + other._validated_value)
-
-    def __radd__(self, other: Self) -> Self:
-        self._ensure_same_class(other)
-        return self.__class__(other._validated_value + self._validated_value)
 
     def __len__(self) -> int:
         return len(self._validated_value)
