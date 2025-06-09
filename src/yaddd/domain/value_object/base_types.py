@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 from time import struct_time
 
-from typing_extensions import Never, Self, overload
+from typing import Never, Self, overload
 
 from .base import ValueObject
 from .registry import VOBaseTypesRegistry
