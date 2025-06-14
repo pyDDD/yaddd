@@ -40,8 +40,6 @@ pydantic = [
 [dependency-groups]
 dev = [
     "pytest",
-    "pydantic[email]>=2.10.6",
-    "pydantic-settings>=2.7.1",
 ]
 docs = []
 linting = [
@@ -131,6 +129,8 @@ python = "~3.12"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
+pydantic = {version="^2.10.6", extras=["email"]}
+pydantic-settings = "^2.7.1"
 
 [build-system]
 requires = ["poetry-core"]
