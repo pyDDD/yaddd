@@ -1,11 +1,126 @@
+[project]
+name = "yaddd"
+description = "Yet Another DDD for Python"
+authors = [
+    {name = "German Goltsov", email = "gerleffx2@gmail.com"},
+    {name = "Maxim Mukhametov", email = "maxim@example.com"},
+    {name = "Roman Dobrov", email = "roman@example.com"},
+    {name = "Yuri Andreev", email = "andreev.jr@gmail.com"},
+]
+readme = "README.md"
+license = 'MIT'
+license-files = ['LICENSE']
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Intended Audience :: Developers',
+    'Operating System :: OS Independent',
+    'Framework :: yaddd',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Internet',
+]
+requires-python = '>=3.12'
+dependencies = []
+dynamic = ['version', 'readme']
+
+[project.urls]
+Homepage = 'https://github.com/pyDDD/yaddd'
+
+[project.optional-dependencies]
+sqlalchemy = [
+    "sqlalchemy>=2.0.37",
+]
+pydantic = [
+    "pydantic[email]>=2.10.6",
+    "pydantic-settings>=2.7.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+docs = []
+linting = [
+    "ruff",
+    "isort",
+]
+testing-extra = []
+typechecking = [
+    "mypy",
+]
+all = [
+  { include-group = 'dev' },
+  { include-group = 'docs' },
+  { include-group = 'linting' },
+  { include-group = 'testing-extra' },
+  { include-group = 'typechecking' },
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+exclude = [
+  "tests/*.py",
+]
+select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "S",  # flake8-bandit
+  "C4",  # flake8-comprehensions
+  "T10",  # flake8-debugger
+  "ERA",  # flake8-eradicate
+  "G",  # flake8-logging-format
+  "PT",  # flake8-pytest-style
+  "Q",  # flake8-quotes
+]
+ignore = [
+  "D",  # docstrings
+  "FBT",  # boolean position of function arg. More: https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
+  "EM",  # Messages in exceptions
+  "TRY003",  # Messages in exceptions
+  "G004",  # flake8
+  "C408",  # flake8
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["application"]
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "-s -v -p no:warnings -m 'not with_db'"
+env_override_existing_values = 1
+env_files = [".env", ".test.env"]
+log_cli = 1
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+filterwarnings = ["ignore:ssl.*is deprecated:DeprecationWarning"]
+markers = [
+    "with_db: mark a test that require database",
+]
+
 [tool.poetry]
+package-mode = true
+packages = [{include = "src/yaddd"}]
+readme = "README.md"
+# Deprecated attrs (only for backward compatibility)
+authors = []
 name = "yaddd"
 version = "0.1.0"
 description = "Yet another DDD for Python"
-authors = ["Andreev, Yury"]
-readme = "README.md"
-package-mode = true
-packages = [{include = "src/yaddd"}]
 
 
 [tool.poetry.dependencies]
@@ -14,6 +129,8 @@ python = "~3.12"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
+pydantic = {version="^2.10.6", extras=["email"]}
+pydantic-settings = "^2.7.1"
 
 [build-system]
 requires = ["poetry-core"]
